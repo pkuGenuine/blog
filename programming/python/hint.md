@@ -1,5 +1,12 @@
 # Type Hints
-With type hints, static checker can help us to discover some bugs without running the code. There are two ways to annotate the param, return value or property: norminal or structrual.
+Python is a dynamic language, so usually you’ll only see errors in your code when you attempt to run it.
+
+~~~python
+number = input("What is your favourite number?")
+print(number + 1)  # error
+~~~
+
+With type hints, static checker, like [Mypy](http://mypy-lang.org/) can help us to discover some bugs without running the code. There are two ways to annotate the param, return value or property: norminal or structrual.
 
 ## Nominal & Structual
 Nominal: compatibility and equivalence of data types is determined by explicit declarations and/or the name of the types. 
@@ -91,7 +98,9 @@ Normal ABCs are usually used to construct a framework and inherited by client cl
 ## More Issues
 
 ### Generics & Type Bound
-There is a way to "define generic functions" (in the static checker's perspective) in python.
+There is a way to "define generic functions & generic classes" (in the static checker's perspective) in python.
+
+Use `TypeVar` to "define generic functions". Use `Protocol` to add type bounds.
 
 ~~~python
 from typing import TypeVar, Protocol
@@ -109,6 +118,20 @@ def my_max(x: S, y: S) -> S:
     return x
 ~~~
 
+Use `Generic` and `TypeVar` to define generic classes.
+
+~~~python
+from typing import TypeVar, Generic
+from logging import Logger
+
+T = TypeVar('T')
+
+class LoggedVar(Generic[T]):
+    def __init__(self, value: T, name: str, logger: Logger) -> None:
+        self.name = name
+        self.logger = logger
+        self.value = value
+~~~
 
 ### Runtime Protocol
 Protocol classes decorated with `runtime_checkable()` act as simple-minded runtime protocols that check only the presence of given attributes, ignoring their type signatures.
