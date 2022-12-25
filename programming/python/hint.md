@@ -38,13 +38,13 @@ def f(a: Iterator[str]):
 f(I())
 ~~~
 
-Though class `I` has no declaration with `Iterator[str]`, it is indeed an iterator of `str`.
+Though class `I` has no declaration with `Iterator[str]`, it is indeed an iterator of `str`. 
+
+Static duck typing is implemented with `Protocol` class (see [PEP544](https://peps.python.org/pep-0544/) for more details). The `typing` module defines various protocol classes that correspond to common Python protocols, such as `Iterator[T]`. 
 
 ## Protocols
+To define your own protocol, simply inherit from `Protocol` and write the function signatures. Any class that has consistent function signatures are regarded as your protocol by static checker.
 
-In[PEP544](https://peps.python.org/pep-0544/), static and runtime semantics of protocol classes was introduced to provide a support for structural subtyping (static duck typing).
-
-### Basic Usage
 
 ~~~python
 #animal.py
@@ -72,13 +72,60 @@ class Dog:
 
 dog = Dog()
 # Static checker will be happy,
-# Because dog implements `walk` and `talk` method.
-# And their sigature is consitent with `Animal` protocol. 
+# Because `Dog` implements `walk` and `talk` method.
+# And their sigature is consistent with `Animal` protocol.
+# Thus, dog satisfies the Animal constrain.
 make_animal_speak(dog)
 ~~~
 
+
 ### Difference with ABC
-It really similar to ABC, isn't it? But they have subtle differences. Reference this [article](https://jellis18.github.io/post/2022-01-11-abc-vs-protocol/).
+It is similar to ABC, isn't it? Actually `Protocol`'s metaclass is inherited from `ABCMeta` with minor amendment.
+
+With hooks like `__subclass__`, ABCs provide structural behavior at runtime. Protocols support such behavior statically. At runtime, protocols has few differences with ABCs.
+
+Protocols are rarely appear outside the type hints. It is good for defining interfaces. Protocols are not "implemented" but tell downstream code what the structure of the input object is expected to be.
+
+Normal ABCs are usually used to construct a framework and inherited by client classes. They are a good mechanism for code reuse, as ABCs (i.e. parent class) do most of the work and have the children implement the specifics.
+
+## More Issues
+
+### Generics & Type Bound
+There is a way to "define generic functions" (in the static checker's perspective) in python.
+
+~~~python
+from typing import TypeVar, Protocol
 
 
+class SupportsLessThan(Protocol):
+    def __lt__(self, __other: Any) -> bool:
+        ...
 
+S = TypeVar('S', bound=SupportsLessThan)
+
+def my_max(x: S, y: S) -> S:
+    if x < y:
+        return y
+    return x
+~~~
+
+
+### Runtime Protocol
+Protocol classes decorated with `runtime_checkable()` act as simple-minded runtime protocols that check only the presence of given attributes, ignoring their type signatures.
+
+~~~
+>>> from typing import Iterable
+>>> isinstance(['t'], Iterable)
+True
+>>> isinstance(['t'], Iterable[str])
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+  File "/usr/local/lib/python3.11/typing.py", line 1288, in __instancecheck__
+    return self.__subclasscheck__(type(obj))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/typing.py", line 1291, in __subclasscheck__
+    raise TypeError("Subscripted generics cannot be used with"
+TypeError: Subscripted generics cannot be used with class and instance checks
+~~~
+
+!Question: 不是很懂泛型和 Runtime 的纠缠关系。直观上来看，不管有没有泛型，`Protocol` 都可以在 runtime 做检查，但检查不管 signature 也不管泛型。即便 runtime checkable 了在静态时也会检查 signature 以及 泛型？
